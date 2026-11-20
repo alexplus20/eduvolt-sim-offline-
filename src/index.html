@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduVolt SIM — شبیه‌ساز آفلاین مدارهای فرمان و قدرت صنعتی (IEC)</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --panel-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --live-red: #ef4444;
+      --live-yellow: #f59e0b;
+      --live-blue: #3b82f6;
+      --neutral-cyan: #06b6d4;
+      --pe-green: #22c55e;
+      --energized: #facc15;
+    }
+    * { box-sizing: border-box; user-select: none; }
+    body {
+      margin: 0;
+      font-family: "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--accent);
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    button, select {
+      background: #0f172a;
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12.5px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+    button:hover, select:hover { border-color: var(--accent); }
+    button.active {
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+      border-color: var(--accent);
+    }
+    button.run-btn.running {
+      background: #16a34a;
+      border-color: #22c55e;
+      color: #fff;
+      font-weight: 700;
+    }
+    button.danger { border-color: #ef4444; color: #fca5a5; }
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    aside.palette {
+      width: 230px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--panel-border);
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 4px;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 4px;
+    }
+    .comp-item {
+      background: #0f172a;
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 7px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .comp-item:hover, .comp-item.selected {
+      border-color: var(--energized);
+      background: #172554;
+    }
+    .canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #0b1120;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    aside.props {
+      width: 250px;
+      background: var(--panel-bg);
+      border-right: 1px solid var(--panel-border);
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 12.5px;
+    }
+    .prop-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .prop-row input, .prop-row select {
+      width: 100%;
+      background: #0f172a;
+      color: var(--text-main);
+      border: 1px solid var(--panel-border);
+      border-radius: 5px;
+      padding: 5px 8px;
+      font-family: inherit;
+    }
+    .status-bar {
+      background: #090d16;
+      border-top: 1px solid var(--panel-border);
+      padding: 5px 14px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .fault-banner {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.18);
+      border: 1px solid #ef4444;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+    .ok-banner { color: #86efac; }
+    .legend-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span>⚡ EduVolt SIM (IEC Offline v3)</span>
+      <span style="font-size:11px; color:var(--text-muted); font-weight:400;">شبیه‌ساز مدار فرمان و قدرت صنعتی</span>
+    </div>
+    <div class="toolbar">
+      <button id="modeSelect" class="active" title="انتخاب و جابه‌جایی (V)">انتخاب / حرکت</button>
+      <button id="modeWire" title="سیم‌کشی بین پایه‌ها (W)">سیم‌کشی</button>
+      <button id="rotateBtn" title="چرخش قطعه انتخابی (R)">چرخش ↻</button>
+      <button id="deleteBtn" class="danger" title="حذف قطعه یا سیم انتخاب‌شده (Del)">حذف</button>
+      <button id="undoBtn" title="بازگشت (Ctrl+Z)">Undo</button>
+      <button id="redoBtn" title="تکرار (Ctrl+Y)">Redo</button>
+      <select id="presetSelect" title="بارگذاری مدار آماده صنعتی">
+        <option value="">-- مدارهای آماده صنعتی --</option>
+        <option value="dol">راه‌اندازی مستقیم موتور سه‌فاز (DOL)</option>
+        <option value="rev">چپ‌گرد / راست‌گرد با اینترلاک (Forward/Reverse)</option>
+        <option value="stardelta">راه‌اندازی ستاره-مثلث با تایمر (Star-Delta)</option>
+      </select>
+      <button id="exportBtn" title="ذخیره مدار به صورت JSON">ذخیره JSON</button>
+      <button id="importBtn" title="باز کردن فایل JSON">باز کردن</button>
+      <input type="file" id="fileInput" accept=".json" style="display:none;" />
+      <button id="runBtn" class="run-btn">▶ اجرا (Run)</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <aside class="palette">
+      <div class="section-title">تغذیه و مدار قدرت (IEC)</div>
+      <div class="comp-item" data-type="BUS_L1"><span>باس فاز L1 (230/400V)</span><span class="legend-dot" style="background:#ef4444"></span></div>
+      <div class="comp-item" data-type="BUS_L2"><span>باس فاز L2</span><span class="legend-dot" style="background:#f59e0b"></span></div>
+      <div class="comp-item" data-type="BUS_L3"><span>باس فاز L3</span><span class="legend-dot" style="background:#3b82f6"></span></div>
+      <div class="comp-item" data-type="BUS_N"><span>باس نول N</span><span class="legend-dot" style="background:#06b6d4"></span></div>
+      <div class="comp-item" data-type="BUS_PE"><span>باس ارت PE</span><span class="legend-dot" style="background:#22c55e"></span></div>
+      <div class="comp-item" data-type="MCB"><span>کلید مینیاتوری / فیوز (Q/F)</span><span>1-2</span></div>
+      <div class="comp-item" data-type="OLR"><span>رله حرارتی بی‌متال (F2)</span><span>95-96</span></div>
+      <div class="comp-item" data-type="MOTOR_3P"><span>موتور القایی سه‌فاز (M1)</span><span>U-V-W</span></div>
+
+      <div class="section-title">فرمان، کنترل و سیگنال</div>
+      <div class="comp-item" data-type="PB_NO"><span>شستی استارت NO (SB2)</span><span>13-14</span></div>
+      <div class="comp-item" data-type="PB_NC"><span>شستی استپ NC (SB1)</span><span>21-22</span></div>
+      <div class="comp-item" data-type="ESTOP"><span>شستی اضطراری قفل‌شونده (SB0)</span><span>NC</span></div>
+      <div class="comp-item" data-type="COIL"><span>بوبین کنتاکتور / رله (KM/KA)</span><span>A1-A2</span></div>
+      <div class="comp-item" data-type="TIMER_ON"><span>تایمر تأخیر در وصل (KT - ON Delay)</span><span>A1-A2</span></div>
+      <div class="comp-item" data-type="AUX_NO"><span>کنتاکت باز NO (هم‌تگ)</span><span>13-14</span></div>
+      <div class="comp-item" data-type="AUX_NC"><span>کنتاکت بسته NC (هم‌تگ)</span><span>21-22</span></div>
+      <div class="comp-item" data-type="PILOT_LAMP"><span>چراغ سیگنال / نشانگر (HL)</span><span>X1-X2</span></div>
+    </aside>
+
+    <div class="canvas-wrap">
+      <canvas id="simCanvas"></canvas>
+    </div>
+
+    <aside class="props">
+      <div class="section-title">مشخصات قطعه و راهنما</div>
+      <div id="propPanel">
+        <div style="color:var(--text-muted); line-height:1.6;">
+          • در حالت <b>ویرایش</b>: قطعه یا سیم را انتخاب کنید یا در حالت <b>سیم‌کشی</b> بین پایه‌ها وصل کنید.<br/>
+          • در حالت <b>اجرا (Run)</b>: روی شستی‌ها، کلید مینیاتوری یا رله حرارتی کلیک کنید (کلیک راست روی شستی = قفل/آزاد).
+        </div>
+      </div>
+      <div class="section-title">راهنمای رنگ خطوط</div>
+      <div style="line-height:1.8; font-size:12px;">
+        <div><span class="legend-dot" style="background:#ef4444"></span> فاز L1 / مدار فرمان برق‌دار</div>
+        <div><span class="legend-dot" style="background:#f59e0b"></span> فاز L2</div>
+        <div><span class="legend-dot" style="background:#3b82f6"></span> فاز L3</div>
+        <div><span class="legend-dot" style="background:#06b6d4"></span> نول N (برگشت جریان)</div>
+        <div><span class="legend-dot" style="background:#22c55e"></span> زمین حفاظتی PE</div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="status-bar">
+    <div id="faultBox" class="ok-banner">وضعیت مدار: آماده (بدون خطای اتصال کوتاه)</div>
+    <div id="hintBox" style="color:var(--text-muted);">میانبرها: V انتخاب | W سیم‌کشی | R چرخش | Del حذف | Ctrl+Z/Y</div>
+  </div>
+
+  <script>
+    const GRID = 24;
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const state = {
+      mode: "select",
+      running: false,
+      placingType: null,
+      selectedCompId: null,
+      selectedWireIdx: null,
+      wireStartPin: null,
+      draggingCompId: null,
+      dragOffset: { gx: 0, gy: 0 },
+      components: [],
+      wires: [],
+      undoStack: [],
+      redoStack: [],
+      coilEnergized: {},
+      timerElapsed: {},
+      timerDone: {},
+      motorState: {},
+      shortFaults: [],
+      nodeStates: {}
+    };
+
+    function snap(val) {
+      return Math.round(val / GRID) * GRID;
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function pushHistory() {
+      state.undoStack.push(JSON.stringify({ components: state.components, wires: state.wires }));
+      if (state.undoStack.length > 50) state.undoStack.shift();
+      state.redoStack = [];
+    }
+
+    function undo() {
+      if (!state.undoStack.length) return;
+      state.redoStack.push(JSON.stringify({ components: state.components, wires: state.wires }));
+      const prev = JSON.parse(state.undoStack.pop());
+      state.components = prev.components;
+      state.wires = prev.wires;
+      state.selectedCompId = null;
+      state.selectedWireIdx = null;
+      renderProps();
+      evaluateCircuit(0);
+    }
+
+    function redo() {
+      if (!state.redoStack.length) return;
+      state.undoStack.push(JSON.stringify({ components: state.components, wires: state.wires }));
+      const next = JSON.parse(state.redoStack.pop());
+      state.components = next.components;
+      state.wires = next.wires;
+      state.selectedCompId = null;
+      state.selectedWireIdx = null;
+      renderProps();
+      evaluateCircuit(0);
+    }
+
+    let idCounter = 1;
+    function nextId(prefix) {
+      return `${prefix}_${idCounter++}`;
+    }
+
+    function createComponent(type, x, y, customTag = null, extra = {}) {
+      const defaults = {
+        BUS_L1: { tag: "L1", w: 48, h: 24, closed: true },
+        BUS_L2: { tag: "L2", w: 48, h: 24, closed: true },
+        BUS_L3: { tag: "L3", w: 48, h: 24, closed: true },
+        BUS_N:  { tag: "N",  w: 48, h: 24, closed: true },
+        BUS_PE: { tag: "PE", w: 48, h: 24, closed: true },
+        MCB:    { tag: "Q1", w: 48, h: 72, closed: true },
+        OLR:    { tag: "F2", w: 48, h: 72, closed: true },
+        PB_NO:  { tag: "SB2", w: 48, h: 72, closed: false, latched: false },
+        PB_NC:  { tag: "SB1", w: 48, h: 72, closed: false, latched: false },
+        ESTOP:  { tag: "SB0", w: 48, h: 72, closed: false, latched: false },
+        COIL:   { tag: "KM1", w: 64, h: 48, closed: true },
+        TIMER_ON: { tag: "KT1", w: 64, h: 48, closed: true, delay: 3.0 },
+        AUX_NO: { tag: "KM1", w: 48, h: 72, closed: true },
+        AUX_NC: { tag: "KM1", w: 48, h: 72, closed: true },
+        PILOT_LAMP: { tag: "HL1", w: 48, h: 48, color: "#22c55e" },
+        MOTOR_3P: { tag: "M1", w: 72, h: 72 }
+      };
+      const cfg = defaults[type] || { tag: "X", w: 48, h: 48 };
+      return {
+        id: nextId(type.toLowerCase()),
+        type,
+        tag: customTag || cfg.tag,
+        x: snap(x),
+        y: snap(y),
+        rot: extra.rot || 0,
+        w: cfg.w,
+        h: cfg.h,
+        closed: extra.closed !== undefined ? extra.closed : !!cfg.closed,
+        latched: !!cfg.latched,
+        delay: extra.delay || cfg.delay || 3.0,
+        color: extra.color || cfg.color || "#22c55e"
+      };
+    }
+
+    function getPins(comp) {
+      let localPins = [];
+      switch (comp.type) {
+        case "BUS_L1":
+        case "BUS_L2":
+        case "BUS_L3":
+        case "BUS_N":
+        case "BUS_PE":
+          localPins = [{ id: "out", dx: 48, dy: 24 }];
+          break;
+        case "MCB":
+        case "OLR":
+        case "PB_NO":
+        case "PB_NC":
+        case "ESTOP":
+        case "AUX_NO":
+        case "AUX_NC":
+          localPins = [
+            { id: "top", dx: 24, dy: 0 },
+            { id: "bot", dx: 24, dy: 72 }
+          ];
+          break;
+        case "COIL":
+        case "TIMER_ON":
+          localPins = [
+            { id: "a1", dx: 32, dy: 0 },
+            { id: "a2", dx: 32, dy: 48 }
+          ];
+          break;
+        case "PILOT_LAMP":
+          localPins = [
+            { id: "x1", dx: 24, dy: 0 },
+            { id: "x2", dx: 24, dy: 48 }
+          ];
+          break;
+        case "MOTOR_3P":
+          localPins = [
+            { id: "u", dx: 12, dy: 0 },
+            { id: "v", dx: 36, dy: 0 },
+            { id: "w", dx: 60, dy: 0 },
+            { id: "pe", dx: 36, dy: 72 }
+          ];
+          break;
+      }
+      const cx = comp.w / 2;
+      const cy = comp.h / 2;
+      const rad = (comp.rot * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+
+      return localPins.map(p => {
+        const rx = p.dx - cx;
+        const ry = p.dy - cy;
+        const tx = rx * cos - ry * sin + cx;
+        const ty = rx * sin + ry * cos + cy;
+        return {
+          compId: comp.id,
+          pinId: p.id,
+          x: snap(comp.x + tx),
+          y: snap(comp.y + ty)
+        };
+      });
+    }
+
+    function getPinWorldPos(compId, pinId) {
+      const comp = state.components.find(c => c.id === compId);
+      if (!comp) return null;
+      const pin = getPins(comp).find(p => p.pinId === pinId);
+      return pin ? { x: pin.x, y: pin.y } : null;
+    }
+
+    function buildOrthogonalPoints(p1, p2) {
+      if (p1.x === p2.x || p1.y === p2.y) {
+        return [{ x: p1.x, y: p1.y }, { x: p2.x, y: p2.y }];
+      }
+      const midX = snap((p1.x + p2.x) / 2);
+      return [
+        { x: p1.x, y: p1.y },
+        { x: midX, y: p1.y },
+        { x: midX, y: p2.y },
+        { x: p2.x, y: p2.y }
+      ];
+    }
+
+    function isComponentConducting(comp) {
+      if (comp.type === "MCB" || comp.type === "OLR") {
+        return !comp.tripped && comp.closed !== false;
+      }
+      if (comp.type === "ESTOP") {
+        return !comp.latched;
+      }
+      if (comp.type === "PB_NC") {
+        return !(comp.pressed || comp.latched);
+      }
+      if (comp.type === "PB_NO") {
+        return !!(comp.pressed || comp.latched);
+      }
+      if (comp.type === "AUX_NO") {
+        const tag = comp.tag;
+        const isTimer = state.components.some(c => c.type === "TIMER_ON" && c.tag === tag);
+        return isTimer ? !!state.timerDone[tag] : !!state.coilEnergized[tag];
+      }
+      if (comp.type === "AUX_NC") {
+        const tag = comp.tag;
+        const isTimer = state.components.some(c => c.type === "TIMER_ON" && c.tag === tag);
+        const active = isTimer ? !!state.timerDone[tag] : !!state.coilEnergized[tag];
+        return !active;
+      }
+      return true;
+    }
+
+    function computePass(coilsMap, timersDoneMap) {
+      const adj = new Map();
+      function keyOf(x, y) { return `${x},${y}`; }
+      function addEdge(a, b) {
+        const ka = keyOf(a.x, a.y);
+        const kb = keyOf(b.x, b.y);
+        if (ka === kb) return;
+        if (!adj.has(ka)) adj.set(ka, new Set());
+        if (!adj.has(kb)) adj.set(kb, new Set());
+        adj.get(ka).add(kb);
+        adj.get(kb).add(ka);
+      }
+
+      for (const w of state.wires) {
+        const pA = getPinWorldPos(w.from.compId, w.from.pinId);
+        const pB = getPinWorldPos(w.to.compId, w.to.pinId);
+        if (!pA || !pB) continue;
+        const pts = buildOrthogonalPoints(pA, pB);
+        for (let i = 0; i < pts.length - 1; i++) {
+          const s1 = pts[i], s2 = pts[i + 1];
+          const steps = Math.max(Math.abs(s2.x - s1.x), Math.abs(s2.y - s1.y)) / GRID;
+          let prev = { x: s1.x, y: s1.y };
+          for (let step = 1; step <= steps; step++) {
+            const nx = snap(s1.x + ((s2.x - s1.x) * step) / steps);
+            const ny = snap(s1.y + ((s2.y - s1.y) * step) / steps);
+            const cur = { x: nx, y: ny };
+            addEdge(prev, cur);
+            prev = cur;
+          }
+        }
+      }
+
+      for (const comp of state.components) {
+        let conducting = true;
+        if (comp.type === "MCB" || comp.type === "OLR") conducting = !comp.tripped && comp.closed !== false;
+        else if (comp.type === "ESTOP") conducting = !comp.latched;
+        else if (comp.type === "PB_NC") conducting = !(comp.pressed || comp.latched);
+        else if (comp.type === "PB_NO") conducting = !!(comp.pressed || comp.latched);
+        else if (comp.type === "AUX_NO") {
+          const isTimer = state.components.some(c => c.type === "TIMER_ON" && c.tag === comp.tag);
+          conducting = isTimer ? !!timersDoneMap[comp.tag] : !!coilsMap[comp.tag];
+        } else if (comp.type === "AUX_NC") {
+          const isTimer = state.components.some(c => c.type === "TIMER_ON" && c.tag === comp.tag);
+          const active = isTimer ? !!timersDoneMap[comp.tag] : !!coilsMap[comp.tag];
+          conducting = !active;
+        }
+
+        if (conducting) {
+          const pins = getPins(comp);
+          if (comp.type === "MCB" || comp.type === "OLR" || comp.type.startsWith("PB_") || comp.type === "ESTOP" || comp.type.startsWith("AUX_")) {
+            if (pins.length >= 2) addEdge(pins[0], pins[1]);
+          }
+        }
+      }
+
+      function reachSet(startKeys) {
+        const visited = new Set(startKeys);
+        const queue = [...startKeys];
+        while (queue.length) {
+          const cur = queue.shift();
+          const neighbors = adj.get(cur);
+          if (!neighbors) continue;
+          for (const nxt of neighbors) {
+            if (!visited.has(nxt)) {
+              visited.add(nxt);
+              queue.push(nxt);
+            }
+          }
+        }
+        return visited;
+      }
+
+      const l1Starts = new Set(), l2Starts = new Set(), l3Starts = new Set(), nStarts = new Set(), peStarts = new Set();
+      for (const c of state.components) {
+        const pins = getPins(c);
+        if (!pins.length) continue;
+        const k = keyOf(pins[0].x, pins[0].y);
+        if (c.type === "BUS_L1") l1Starts.add(k);
+        if (c.type === "BUS_L2") l2Starts.add(k);
+        if (c.type === "BUS_L3") l3Starts.add(k);
+        if (c.type === "BUS_N")  nStarts.add(k);
+        if (c.type === "BUS_PE") peStarts.add(k);
+      }
+
+      const reachL1 = reachSet(l1Starts);
+      const reachL2 = reachSet(l2Starts);
+      const reachL3 = reachSet(l3Starts);
+      const reachN  = reachSet(nStarts);
+      const reachPE = reachSet(peStarts);
+
+      const faults = [];
+      for (const k of reachL1) {
+        if (reachN.has(k)) faults.push("اتصالی مستقیم فاز L1 به نول N!");
+        if (reachL2.has(k)) faults.push("اتصالی مستقیم بین فاز L1 و فاز L2!");
+        if (reachL3.has(k)) faults.push("اتصالی مستقیم بین فاز L1 و فاز L3!");
+      }
+      for (const k of reachL2) {
+        if (reachN.has(k)) faults.push("اتصالی مستقیم فاز L2 به نول N!");
+        if (reachL3.has(k)) faults.push("اتصالی مستقیم بین فاز L2 و فاز L3!");
+      }
+      for (const k of reachL3) {
+        if (reachN.has(k)) faults.push("اتصالی مستقیم فاز L3 به نول N!");
+      }
+
+      const nodeStates = {};
+      const allNodes = new Set([...reachL1, ...reachL2, ...reachL3, ...reachN, ...reachPE]);
+      for (const k of allNodes) {
+        const hasL1 = reachL1.has(k);
+        const hasL2 = reachL2.has(k);
+        const hasL3 = reachL3.has(k);
+        const hasN  = reachN.has(k);
+        const hasPE = reachPE.has(k);
+        let color = "#64748b";
+        if (hasL1) color = "#ef4444";
+        else if (hasL2) color = "#f59e0b";
+        else if (hasL3) color = "#3b82f6";
+        else if (hasN) color = "#06b6d4";
+        else if (hasPE) color = "#22c55e";
+        nodeStates[k] = { hasL1, hasL2, hasL3, hasN, hasPE, color, live: hasL1 || hasL2 || hasL3 };
+      }
+
+      const nextCoils = {};
+      for (const c of state.components) {
+        if (c.type === "COIL" || c.type === "TIMER_ON") {
+          nextCoils[c.tag] = false;
+        }
+      }
+      for (const c of state.components) {
+        if (c.type === "COIL" || c.type === "TIMER_ON") {
+          const pins = getPins(c);
+          if (pins.length >= 2) {
+            const s1 = nodeStates[keyOf(pins[0].x, pins[0].y)];
+            const s2 = nodeStates[keyOf(pins[1].x, pins[1].y)];
+            const hasPath = (s1 && s2) && (
+              (s1.live && (s2.hasN || (s2.live && (s1.hasL1 !== s2.hasL1 || s1.hasL2 !== s2.hasL2)))) ||
+              (s2.live && (s1.hasN || (s1.live && (s1.hasL1 !== s2.hasL1 || s1.hasL2 !== s2.hasL2))))
+            );
+            if (hasPath && state.running) {
+              nextCoils[c.tag] = true;
+            }
+          }
+        }
+      }
+
+      return { nodeStates, nextCoils, shortFaults: [...new Set(faults)] };
+    }
+
+    function evaluateCircuit(dt = 0) {
+      let coils = Object.assign({}, state.coilEnergized);
+      let passResult = null;
+      for (let i = 0; i < 6; i++) {
+        passResult = computePass(coils, state.timerDone);
+        const same = JSON.stringify(coils) === JSON.stringify(passResult.nextCoils);
+        coils = passResult.nextCoils;
+        if (same) break;
+      }
+
+      state.coilEnergized = coils;
+      state.nodeStates = passResult.nodeStates;
+      state.shortFaults = passResult.shortFaults;
+
+      for (const c of state.components) {
+        if (c.type === "TIMER_ON") {
+          const tag = c.tag;
+          if (!state.running) {
+            state.timerElapsed[tag] = 0;
+            state.timerDone[tag] = false;
+          } else if (state.coilEnergized[tag]) {
+            state.timerElapsed[tag] = (state.timerElapsed[tag] || 0) + dt;
+            if (state.timerElapsed[tag] >= (c.delay || 3.0)) {
+              state.timerDone[tag] = true;
+            }
+          } else {
+            state.timerElapsed[tag] = 0;
+            state.timerDone[tag] = false;
+          }
+        }
+      }
+
+      for (const c of state.components) {
+        if (c.type === "MOTOR_3P") {
+          const pins = getPins(c);
+          const su = state.nodeStates[`${pins[0].x},${pins[0].y}`] || {};
+          const sv = state.nodeStates[`${pins[1].x},${pins[1].y}`] || {};
+          const sw = state.nodeStates[`${pins[2].x},${pins[2].y}`] || {};
+
+          const pU = su.hasL1 ? 1 : su.hasL2 ? 2 : su.hasL3 ? 3 : 0;
+          const pV = sv.hasL1 ? 1 : sv.hasL2 ? 2 : sv.hasL3 ? 3 : 0;
+          const pW = sw.hasL1 ? 1 : sw.hasL2 ? 2 : sw.hasL3 ? 3 : 0;
+
+          const prev = state.motorState[c.id] || { running: false, dir: "NONE", angle: 0 };
+          let running = false;
+          let dir = "NONE";
+          if (state.running && pU && pV && pW && new Set([pU, pV, pW]).size === 3) {
+            running = true;
+            dir = (pU === 1 && pV === 2 && pW === 3) ? "CW" : "CCW";
+          }
+          const speed = running ? (dir === "CW" ? 5.5 : -5.5) : 0;
+          state.motorState[c.id] = { running, dir, angle: prev.angle + speed * dt };
+        }
+      }
+
+      updateStatusBar();
+    }
+
+    function updateStatusBar() {
+      const box = document.getElementById("faultBox");
+      if (state.shortFaults.length > 0) {
+        box.className = "fault-banner";
+        box.textContent = "⚠ خطای اتصال کوتاه: " + state.shortFaults.join(" | ");
+      } else {
+        box.className = "ok-banner";
+        box.textContent = state.running
+          ? "● شبیه‌سازی در حال اجرا (روی شستی‌ها یا کلیدها کلیک کنید)"
+          : "وضعیت مدار: آماده (حالت طراحی / آزمایش)";
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = "#162033";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= canvas.width; x += GRID) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y <= canvas.height; y += GRID) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      state.wires.forEach((w, idx) => {
+        const pA = getPinWorldPos(w.from.compId, w.from.pinId);
+        const pB = getPinWorldPos(w.to.compId, w.to.pinId);
+        if (!pA || !pB) return;
+        const pts = buildOrthogonalPoints(pA, pB);
+        const nodeInfo = state.nodeStates[`${pA.x},${pA.y}`];
+        const isSelected = state.selectedWireIdx === idx;
+
+        ctx.strokeStyle = isSelected ? "#facc15" : (nodeInfo ? nodeInfo.color : "#64748b");
+        ctx.lineWidth = isSelected ? 3.5 : (nodeInfo && nodeInfo.live ? 3 : 2.2);
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      });
+
+      if (state.mode === "wire" && state.wireStartPin && state.mousePos) {
+        const pts = buildOrthogonalPoints(state.wireStartPin, {
+          x: snap(state.mousePos.x),
+          y: snap(state.mousePos.y)
+        });
+        ctx.strokeStyle = "#38bdf8";
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      for (const comp of state.components) drawComponent(comp);
+    }
+
+    function drawComponent(comp) {
+      const isSel = state.selectedCompId === comp.id;
+      const pins = getPins(comp);
+
+      ctx.save();
+      ctx.fillStyle = isSel ? "#facc15" : "#e2e8f0";
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText(comp.tag, comp.x + comp.w + 6, comp.y + 14);
+
+      if (comp.type === "TIMER_ON") {
+        const rem = Math.max(0, (comp.delay || 3.0) - (state.timerElapsed[comp.tag] || 0));
+        const badge = state.timerDone[comp.tag] ? "DONE" : `${rem.toFixed(1)}s`;
+        ctx.fillStyle = state.timerDone[comp.tag] ? "#22c55e" : "#38bdf8";
+        ctx.fillText(`[${badge}]`, comp.x + comp.w + 6, comp.y + 28);
+      }
+
+      ctx.strokeStyle = isSel ? "#facc15" : "#cbd5e1";
+      ctx.lineWidth = isSel ? 2.5 : 1.8;
+      ctx.fillStyle = "#1e293b";
+
+      if (comp.type.startsWith("BUS_")) {
+        const busColors = { BUS_L1: "#ef4444", BUS_L2: "#f59e0b", BUS_L3: "#3b82f6", BUS_N: "#06b6d4", BUS_PE: "#22c55e" };
+        ctx.fillStyle = busColors[comp.type];
+        ctx.fillRect(comp.x, comp.y + 18, 48, 12);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText(comp.tag, comp.x + 12, comp.y + 28);
+      } else if (comp.type === "COIL" || comp.type === "TIMER_ON") {
+        const active = !!state.coilEnergized[comp.tag];
+        ctx.fillStyle = active ? "#f59e0b" : "#1e293b";
+        ctx.fillRect(comp.x + 10, comp.y + 8, 44, 32);
+        ctx.strokeRect(comp.x + 10, comp.y + 8, 44, 32);
+        ctx.fillStyle = active ? "#0f172a" : "#e2e8f0";
+        ctx.fillText(comp.type === "TIMER_ON" ? "ON-D" : "COIL", comp.x + 16, comp.y + 28);
+      } else if (comp.type === "MOTOR_3P") {
+        const m = state.motorState[comp.id] || { running: false, dir: "NONE", angle: 0 };
+        const cx = comp.x + 36, cy = comp.y + 36;
+        ctx.fillStyle = m.running ? "#14532d" : "#1e293b";
+        ctx.beginPath(); ctx.arc(cx, cy, 24, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(m.angle);
+        ctx.strokeStyle = m.running ? "#4ade80" : "#94a3b8";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(14, 0); ctx.stroke();
+        ctx.restore();
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.fillText(m.running ? (m.dir === "CW" ? "M ↻" : "M ↺") : "M3~", cx - 12, cy + 4);
+      } else if (comp.type === "PILOT_LAMP") {
+        const p1 = pins[0], p2 = pins[1];
+        const s1 = p1 && state.nodeStates[`${p1.x},${p1.y}`];
+        const s2 = p2 && state.nodeStates[`${p2.x},${p2.y}`];
+        const lit = state.running && s1 && s2 && ((s1.live && s2.hasN) || (s2.live && s1.hasN));
+        const cx = comp.x + 24, cy = comp.y + 24;
+        ctx.fillStyle = lit ? comp.color : "#334155";
+        ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      } else {
+        const conducting = isComponentConducting(comp);
+        ctx.strokeRect(comp.x + 6, comp.y + 12, 36, 48);
+        ctx.beginPath();
+        ctx.moveTo(comp.x + 24, comp.y + 12);
+        if (conducting) ctx.lineTo(comp.x + 24, comp.y + 60);
+        else ctx.lineTo(comp.x + 36, comp.y + 52);
+        ctx.stroke();
+
+        ctx.fillStyle = conducting ? "#86efac" : "#fca5a5";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(conducting ? "CLOSED" : "OPEN", comp.x + 5, comp.y + 70);
+      }
+
+      for (const p of pins) {
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function findPinAt(x, y) {
+      for (const comp of state.components) {
+        for (const p of getPins(comp)) {
+          if (Math.hypot(p.x - x, p.y - y) <= 9) return p;
+        }
+      }
+      return null;
+    }
+
+    function findCompAt(x, y) {
+      for (let i = state.components.length - 1; i >= 0; i--) {
+        const c = state.components[i];
+        if (x >= c.x - 4 && x <= c.x + c.w + 4 && y >= c.y - 4 && y <= c.y + c.h + 4) return c;
+      }
+      return null;
+    }
+
+    function distToSegment(px, py, a, b) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(px - a.x, py - a.y);
+      const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / lenSq));
+      return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+    }
+
+    function findWireAt(x, y) {
+      for (let idx = state.wires.length - 1; idx >= 0; idx--) {
+        const w = state.wires[idx];
+        const pA = getPinWorldPos(w.from.compId, w.from.pinId);
+        const pB = getPinWorldPos(w.to.compId, w.to.pinId);
+        if (!pA || !pB) continue;
+        const pts = buildOrthogonalPoints(pA, pB);
+        for (let i = 0; i < pts.length - 1; i++) {
+          if (distToSegment(x, y, pts[i], pts[i + 1]) <= 7) return idx;
+        }
+      }
+      return -1;
+    }
+
+    canvas.addEventListener("mousemove", e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      state.mousePos = { x, y };
+
+      if (!state.running && state.draggingCompId && state.mode === "select") {
+        const comp = state.components.find(c => c.id === state.draggingCompId);
+        if (comp) {
+          comp.x = snap(x - state.dragOffset.gx);
+          comp.y = snap(y - state.dragOffset.gy);
+          evaluateCircuit(0);
+        }
+      }
+    });
+
+    canvas.addEventListener("mousedown", e => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (state.running) {
+        const comp = findCompAt(x, y);
+        if (comp) {
+          state.selectedCompId = comp.id;
+          if (comp.type === "MCB" || comp.type === "OLR") comp.closed = !comp.closed;
+          else if (comp.type === "ESTOP") comp.latched = !comp.latched;
+          else if (comp.type === "PB_NO" || comp.type === "PB_NC") {
+            if (e.button === 2) comp.latched = !comp.latched;
+            else comp.pressed = true;
+          }
+          renderProps();
+          evaluateCircuit(0);
+        }
+        return;
+      }
+
+      if (state.placingType) {
+        pushHistory();
+        const newComp = createComponent(state.placingType, x - 24, y - 24);
+        state.components.push(newComp);
+        state.selectedCompId = newComp.id;
+        state.selectedWireIdx = null;
+        state.placingType = null;
+        document.querySelectorAll(".comp-item").forEach(el => el.classList.remove("selected"));
+        renderProps();
+        evaluateCircuit(0);
+        return;
+      }
+
+      if (state.mode === "wire") {
+        const pin = findPinAt(x, y);
+        if (pin) {
+          if (!state.wireStartPin) state.wireStartPin = pin;
+          else if (state.wireStartPin.compId !== pin.compId || state.wireStartPin.pinId !== pin.pinId) {
+            pushHistory();
+            state.wires.push({
+              from: { compId: state.wireStartPin.compId, pinId: state.wireStartPin.pinId },
+              to: { compId: pin.compId, pinId: pin.pinId }
+            });
+            state.wireStartPin = null;
+            evaluateCircuit(0);
+          }
+        } else {
+          state.wireStartPin = null;
+        }
+        return;
+      }
+
+      const comp = findCompAt(x, y);
+      if (comp) {
+        pushHistory();
+        state.selectedCompId = comp.id;
+        state.selectedWireIdx = null;
+        state.draggingCompId = comp.id;
+        state.dragOffset = { gx: x - comp.x, gy: y - comp.y };
+        renderProps();
+        return;
+      }
+
+      const wireIdx = findWireAt(x, y);
+      if (wireIdx >= 0) {
+        state.selectedWireIdx = wireIdx;
+        state.selectedCompId = null;
+        renderProps();
+        return;
+      }
+
+      state.selectedCompId = null;
+      state.selectedWireIdx = null;
+      renderProps();
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (state.running) {
+        for (const c of state.components) {
+          if (c.type === "PB_NO" || c.type === "PB_NC") c.pressed = false;
+        }
+        evaluateCircuit(0);
+      }
+      state.draggingCompId = null;
+    });
+
+    canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+    function renderProps() {
+      const panel = document.getElementById("propPanel");
+      if (state.selectedWireIdx !== null && state.selectedWireIdx >= 0) {
+        panel.innerHTML = `<div style="color:var(--energized);">سیم انتخاب شده است. برای حذف کلید <b>حذف / Del</b> را بزنید.</div>`;
+        return;
+      }
+      const comp = state.components.find(c => c.id === state.selectedCompId);
+      if (!comp) {
+        panel.innerHTML = `<div style="color:var(--text-muted);">قطعه‌ای انتخاب نشده است.</div>`;
+        return;
+      }
+      let extraHtml = "";
+      if (comp.type === "TIMER_ON") {
+        extraHtml = `
+          <div class="prop-row">
+            <label>زمان تأخیر (ثانیه):</label>
+            <input type="number" step="0.5" min="0.5" id="propDelay" value="${comp.delay || 3.0}" />
+          </div>`;
+      }
+      if (comp.type === "PILOT_LAMP") {
+        extraHtml = `
+          <div class="prop-row">
+            <label>رنگ چراغ:</label>
+            <select id="propColor">
+              <option value="#22c55e" ${comp.color === "#22c55e" ? "selected" : ""}>سبز (Run)</option>
+              <option value="#ef4444" ${comp.color === "#ef4444" ? "selected" : ""}>قرمز (Stop/Trip)</option>
+              <option value="#f59e0b" ${comp.color === "#f59e0b" ? "selected" : ""}>کهربایی (Timer/Fault)</option>
+              <option value="#3b82f6" ${comp.color === "#3b82f6" ? "selected" : ""}>آبی (Power)</option>
+            </select>
+          </div>`;
+      }
+      panel.innerHTML = `
+        <div class="prop-row">
+          <label>تگ / نام قطعه (Tag):</label>
+          <input type="text" id="propTag" value="${comp.tag}" />
+        </div>
+        ${extraHtml}
+      `;
+
+      const tagInput = document.getElementById("propTag");
+      if (tagInput) tagInput.addEventListener("input", e => { comp.tag = e.target.value.trim() || comp.tag; evaluateCircuit(0); });
+      const delayInput = document.getElementById("propDelay");
+      if (delayInput) delayInput.addEventListener("input", e => { comp.delay = Math.max(0.5, parseFloat(e.target.value) || 3.0); });
+      const colorSel = document.getElementById("propColor");
+      if (colorSel) colorSel.addEventListener("change", e => { comp.color = e.target.value; });
+    }
+
+    document.getElementById("modeSelect").onclick = () => {
+      state.mode = "select"; state.wireStartPin = null;
+      document.getElementById("modeSelect").classList.add("active");
+      document.getElementById("modeWire").classList.remove("active");
+    };
+    document.getElementById("modeWire").onclick = () => {
+      state.mode = "wire"; state.placingType = null;
+      document.getElementById("modeWire").classList.add("active");
+      document.getElementById("modeSelect").classList.remove("active");
+    };
+    document.getElementById("rotateBtn").onclick = () => {
+      const comp = state.components.find(c => c.id === state.selectedCompId);
+      if (!comp) return;
+      pushHistory();
+      comp.rot = (comp.rot + 90) % 360;
+      evaluateCircuit(0);
+    };
+    document.getElementById("deleteBtn").onclick = () => {
+      if (state.selectedWireIdx !== null && state.selectedWireIdx >= 0) {
+        pushHistory();
+        state.wires.splice(state.selectedWireIdx, 1);
+        state.selectedWireIdx = null;
+        renderProps();
+        evaluateCircuit(0);
+        return;
+      }
+      if (!state.selectedCompId) return;
+      pushHistory();
+      const delId = state.selectedCompId;
+      state.components = state.components.filter(c => c.id !== delId);
+      state.wires = state.wires.filter(w => w.from.compId !== delId && w.to.compId !== delId);
+      state.selectedCompId = null;
+      renderProps();
+      evaluateCircuit(0);
+    };
+    document.getElementById("undoBtn").onclick = undo;
+    document.getElementById("redoBtn").onclick = redo;
+
+    const runBtn = document.getElementById("runBtn");
+    runBtn.onclick = () => {
+      state.running = !state.running;
+      runBtn.textContent = state.running ? "⏹ توقف (Stop)" : "▶ اجرا (Run)";
+      runBtn.classList.toggle("running", state.running);
+      evaluateCircuit(0);
+    };
+
+    document.querySelectorAll(".comp-item").forEach(el => {
+      el.addEventListener("click", () => {
+        if (state.running) return;
+        state.mode = "select";
+        document.getElementById("modeSelect").classList.add("active");
+        document.getElementById("modeWire").classList.remove("active");
+        state.placingType = el.dataset.type;
+        document.querySelectorAll(".comp-item").forEach(i => i.classList.remove("selected"));
+        el.classList.add("selected");
+      });
+    });
+
+    function loadPreset(name) {
+      pushHistory();
+      state.components = [];
+      state.wires = [];
+      state.selectedCompId = null;
+      state.selectedWireIdx = null;
+
+      if (name === "dol") {
+        const l1 = createComponent("BUS_L1", 72, 48, "L1");
+        const l2 = createComponent("BUS_L2", 144, 48, "L2");
+        const l3 = createComponent("BUS_L3", 216, 48, "L3");
+        const q1 = createComponent("MCB", 96, 96, "Q1");
+        const km1Power = createComponent("AUX_NO", 96, 192, "KM1");
+        const olr = createComponent("OLR", 96, 288, "F2");
+        const m1 = createComponent("MOTOR_3P", 108, 384, "M1");
+
+        const f2Ctrl = createComponent("BUS_L1", 408, 48, "L1");
+        const sb1 = createComponent("PB_NC", 432, 96, "SB1");
+        const sb2 = createComponent("PB_NO", 432, 192, "SB2");
+        const holdNo = createComponent("AUX_NO", 504, 192, "KM1");
+        const km1Coil = createComponent("COIL", 424, 312, "KM1");
+        const nBus = createComponent("BUS_N", 432, 384, "N");
+
+        state.components.push(l1, l2, l3, q1, km1Power, olr, m1, f2Ctrl, sb1, sb2, holdNo, km1Coil, nBus);
+        state.wires.push(
+          { from: { compId: l1.id, pinId: "out" }, to: { compId: q1.id, pinId: "top" } },
+          { from: { compId: q1.id, pinId: "bot" }, to: { compId: km1Power.id, pinId: "top" } },
+          { from: { compId: km1Power.id, pinId: "bot" }, to: { compId: olr.id, pinId: "top" } },
+          { from: { compId: olr.id, pinId: "bot" }, to: { compId: m1.id, pinId: "u" } },
+          { from: { compId: l2.id, pinId: "out" }, to: { compId: m1.id, pinId: "v" } },
+          { from: { compId: l3.id, pinId: "out" }, to: { compId: m1.id, pinId: "w" } },
+          { from: { compId: f2Ctrl.id, pinId: "out" }, to: { compId: sb1.id, pinId: "top" } },
+          { from: { compId: sb1.id, pinId: "bot" }, to: { compId: sb2.id, pinId: "top" } },
+          { from: { compId: sb1.id, pinId: "bot" }, to: { compId: holdNo.id, pinId: "top" } },
+          { from: { compId: sb2.id, pinId: "bot" }, to: { compId: km1Coil.id, pinId: "a1" } },
+          { from: { compId: holdNo.id, pinId: "bot" }, to: { compId: km1Coil.id, pinId: "a1" } },
+          { from: { compId: km1Coil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } }
+        );
+      } else if (name === "rev") {
+        const l1 = createComponent("BUS_L1", 120, 48, "L1");
+        const sb0 = createComponent("ESTOP", 144, 96, "SB0");
+        const km2Nc = createComponent("AUX_NC", 120, 192, "KM2");
+        const km1Nc = createComponent("AUX_NC", 240, 192, "KM1");
+        const sbFwd = createComponent("PB_NO", 120, 288, "SB2");
+        const sbRev = createComponent("PB_NO", 240, 288, "SB3");
+        const km1Coil = createComponent("COIL", 112, 384, "KM1");
+        const km2Coil = createComponent("COIL", 232, 384, "KM2");
+        const nBus = createComponent("BUS_N", 168, 456, "N");
+
+        state.components.push(l1, sb0, km2Nc, km1Nc, sbFwd, sbRev, km1Coil, km2Coil, nBus);
+        state.wires.push(
+          { from: { compId: l1.id, pinId: "out" }, to: { compId: sb0.id, pinId: "top" } },
+          { from: { compId: sb0.id, pinId: "bot" }, to: { compId: km2Nc.id, pinId: "top" } },
+          { from: { compId: sb0.id, pinId: "bot" }, to: { compId: km1Nc.id, pinId: "top" } },
+          { from: { compId: km2Nc.id, pinId: "bot" }, to: { compId: sbFwd.id, pinId: "top" } },
+          { from: { compId: km1Nc.id, pinId: "bot" }, to: { compId: sbRev.id, pinId: "top" } },
+          { from: { compId: sbFwd.id, pinId: "bot" }, to: { compId: km1Coil.id, pinId: "a1" } },
+          { from: { compId: sbRev.id, pinId: "bot" }, to: { compId: km2Coil.id, pinId: "a1" } },
+          { from: { compId: km1Coil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } },
+          { from: { compId: km2Coil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } }
+        );
+      } else if (name === "stardelta") {
+        const l1 = createComponent("BUS_L1", 168, 48, "L1");
+        const sb2 = createComponent("PB_NO", 192, 96, "SB2");
+        const km1Coil = createComponent("COIL", 184, 192, "KM1");
+        const kt1Coil = createComponent("TIMER_ON", 288, 192, "KT1", { delay: 3.0 });
+        const ktDoneNc = createComponent("AUX_NC", 144, 288, "KT1");
+        const ktDoneNo = createComponent("AUX_NO", 264, 288, "KT1");
+        const starCoil = createComponent("COIL", 136, 384, "KM2");
+        const deltaCoil = createComponent("COIL", 256, 384, "KM3");
+        const nBus = createComponent("BUS_N", 192, 456, "N");
+
+        state.components.push(l1, sb2, km1Coil, kt1Coil, ktDoneNc, ktDoneNo, starCoil, deltaCoil, nBus);
+        state.wires.push(
+          { from: { compId: l1.id, pinId: "out" }, to: { compId: sb2.id, pinId: "top" } },
+          { from: { compId: sb2.id, pinId: "bot" }, to: { compId: km1Coil.id, pinId: "a1" } },
+          { from: { compId: sb2.id, pinId: "bot" }, to: { compId: kt1Coil.id, pinId: "a1" } },
+          { from: { compId: sb2.id, pinId: "bot" }, to: { compId: ktDoneNc.id, pinId: "top" } },
+          { from: { compId: sb2.id, pinId: "bot" }, to: { compId: ktDoneNo.id, pinId: "top" } },
+          { from: { compId: ktDoneNc.id, pinId: "bot" }, to: { compId: starCoil.id, pinId: "a1" } },
+          { from: { compId: ktDoneNo.id, pinId: "bot" }, to: { compId: deltaCoil.id, pinId: "a1" } },
+          { from: { compId: km1Coil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } },
+          { from: { compId: kt1Coil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } },
+          { from: { compId: starCoil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } },
+          { from: { compId: deltaCoil.id, pinId: "a2" }, to: { compId: nBus.id, pinId: "out" } }
+        );
+      }
+
+      renderProps();
+      evaluateCircuit(0);
+    }
+
+    document.getElementById("presetSelect").addEventListener("change", e => {
+      if (e.target.value) loadPreset(e.target.value);
+    });
+
+    document.getElementById("exportBtn").onclick = () => {
+      const data = JSON.stringify({ components: state.components, wires: state.wires }, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "eduvolt-circuit.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    document.getElementById("importBtn").onclick = () => document.getElementById("fileInput").click();
+    document.getElementById("fileInput").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          pushHistory();
+          const parsed = JSON.parse(reader.result);
+          state.components = parsed.components || [];
+          state.wires = parsed.wires || [];
+          evaluateCircuit(0);
+        } catch (err) {
+          alert("فایل JSON معتبر نیست.");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    window.addEventListener("keydown", e => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+      if (e.key === "v" || e.key === "V") document.getElementById("modeSelect").click();
+      else if (e.key === "w" || e.key === "W") document.getElementById("modeWire").click();
+      else if (e.key === "r" || e.key === "R") document.getElementById("rotateBtn").click();
+      else if (e.key === "Delete" || e.key === "Backspace") document.getElementById("deleteBtn").click();
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); undo(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); }
+    });
+
+    let lastTime = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+      evaluateCircuit(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    loadPreset("dol");
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
